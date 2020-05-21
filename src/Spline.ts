@@ -46,7 +46,7 @@ export class TwistySpline {
   }[];
 
   // TODO: calculate this based on length of spline
-  divisions = 150;
+  divisions = 100;
 
   constructor(segments: SplineSegment[]) {
     this.curvePath = new CurvePath();
@@ -66,10 +66,8 @@ export class TwistySpline {
       const startT = (i === 0 ? 0 : curveLengths[i - 1]) / length;
       const endT = curveLengths[i] / length;
       const scale = endT - startT;
-      // console.log(minT, maxT, curveLengths[i]);
       for (const normal of normals) {
         const t = startT + scale * normal.t;
-        console.log(t);
         this.normals.push({
           t,
           normal: normal.normal,
@@ -83,7 +81,8 @@ export class TwistySpline {
     // TODO
     // this seems like a very silly way to do this... but works for now
     // maybe there's some better way of scaling along pieces?
-    const maxIdx = this.normals.findIndex((normal) => normal.t > t);
+    const maxIdx =
+      t === 0 ? 1 : this.normals.findIndex((normal) => normal.t >= t);
     const minIdx = maxIdx - 1;
     const minT = this.normals[minIdx].t;
     const maxT = this.normals[maxIdx].t;
@@ -120,6 +119,13 @@ export class TwistySpline {
     return line;
   }
 
+  // we draw two triangles per step, like this:
+  // ____
+  // | /|
+  // |/_|
+  //
+  // the "flat ends" are rotated so that they are along the normals of the
+  // curve, as defined by the rotation of the curve + user-provided normals
   createTrackGeo() {
     const geo = new Geometry();
 
@@ -127,20 +133,14 @@ export class TwistySpline {
     const step = 1 / this.divisions;
 
     let idx = 0;
-    for (let t = 0; t + step <= 1; t += step) {
-      // we draw two triangles per step, like this:
-      // ____
-      // | /|
-      // |/_|
-      //
-      // the "flat ends" are rotated so that they are along the normals of the
-      // curve, as defined by the rotation of the curve + user-provided normals
+    for (let t = 0; t < 1; t += step) {
+      const nextT = t + step > 1 ? 1 : t + step;
       const cur = this.curvePath.getPointAt(t);
-      const next = this.curvePath.getPointAt(t + step);
+      const next = this.curvePath.getPointAt(nextT);
       const tangent = this.curvePath.getTangentAt(t);
-      const nextTangent = this.curvePath.getTangentAt(t + step);
+      const nextTangent = this.curvePath.getTangentAt(nextT);
       const curNormal = this.getNormalAt(t);
-      const nextNormal = this.getNormalAt(t + step);
+      const nextNormal = this.getNormalAt(nextT);
       const offset = tangent.clone().cross(curNormal).multiplyScalar(width);
       const nextOffset = nextTangent
         .clone()
