@@ -70,9 +70,17 @@ export class TwistySpline {
     return line;
   }
 
+  getNormalAt(t: number): Vector3 {
+    // TODO
+    // need to interpolate cleanly.
+    return new Vector3(0, 1, 0);
+  }
+
   renderNormals(): Line[] {
-    return this.normals.map(({ normal, t }) => {
-      console.log(this.normals.length, t);
+    const step = 0.01;
+    const lines = [];
+    for (let t = 0; t <= 1; t += step) {
+      const normal = this.getNormalAt(t);
       const pos = this.curvePath.getPointAt(t);
       const geo = new Geometry().setFromPoints([
         pos,
@@ -80,7 +88,8 @@ export class TwistySpline {
       ]);
       const mat = new LineBasicMaterial({ color: 0x32cd32 });
       const line = new Line(geo, mat);
-      return line;
-    });
+      lines.push(line);
+    }
+    return lines;
   }
 }
