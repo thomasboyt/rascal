@@ -1,4 +1,4 @@
-import { CubicBezierCurve3, Vector3, Vector2, MathUtils } from 'three';
+import { CubicBezierCurve3, Vector3, MathUtils } from 'three';
 import { SplineSegment } from './Spline';
 
 interface SegmentPrefab {
@@ -27,6 +27,14 @@ const prefabs: { [key: string]: SegmentPrefab } = {
         t: 0,
         angle: 0,
       },
+      {
+        t: 0.4,
+        angle: -MathUtils.degToRad(40),
+      },
+      {
+        t: 0.6,
+        angle: -MathUtils.degToRad(40),
+      },
     ],
   },
   rightTurn: {
@@ -42,8 +50,12 @@ const prefabs: { [key: string]: SegmentPrefab } = {
         angle: 0,
       },
       {
-        t: 0.5,
-        angle: MathUtils.degToRad(45),
+        t: 0.4,
+        angle: MathUtils.degToRad(25),
+      },
+      {
+        t: 0.6,
+        angle: MathUtils.degToRad(25),
       },
     ],
   },
@@ -134,6 +146,12 @@ export function convertPiecesToSplineSegments(
       };
     });
 
+    // add an ending normal for the last point
+    normals.push({
+      t: 1,
+      normal: new Vector3(0, 1, 0).applyAxisAngle(curve.getTangentAt(1), 0),
+    });
+
     return {
       // rotated curve
       curve,
@@ -144,28 +162,13 @@ export function convertPiecesToSplineSegments(
 
 export function generateSegments(): SplineSegment[] {
   const pieces = [
-    'straight',
     'rightTurn',
-    'leftUTurn',
     'straight',
-    // 'straight',
-    // 'rightTurn',
-    // 'leftTurn',
-    // 'leftTurn',
-    // 'straight',
-    // 'straight',
+    // 'leftUTurn',
     // 'leftTurn',
     // 'straight',
     // 'rightTurn',
     // 'leftUTurn',
-    // 'leftUTurn',
-    // 'straight',
-    // 'rightTurn',
-    // 'leftTurn',
-    // 'straight',
-    // 'leftUTurn',
-    // 'rightTurn',
-    // 'straight',
   ];
 
   return convertPiecesToSplineSegments(pieces);
