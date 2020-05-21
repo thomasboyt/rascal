@@ -19,7 +19,9 @@ function init() {
     1000
   );
   camera.position.z = 1;
-  camera.position.y = 0.2;
+  camera.position.y = 1;
+  camera.position.x = 2;
+  camera.rotateY(MathUtils.degToRad(30));
   camera.rotateX(MathUtils.degToRad(-30));
   const renderer = new WebGLRenderer();
   renderer.setSize(window.innerWidth, window.innerHeight);

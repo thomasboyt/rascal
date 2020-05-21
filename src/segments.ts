@@ -1,4 +1,4 @@
-import { CubicBezierCurve3, Vector3, Vector2 } from 'three';
+import { CubicBezierCurve3, Vector3, Vector2, MathUtils } from 'three';
 import { SplineSegment } from './Spline';
 
 interface SegmentPrefab {
@@ -17,8 +17,8 @@ const prefabs: { [key: string]: SegmentPrefab } = {
     curve: new CubicBezierCurve3(
       new Vector3(0, 0, 0),
       new Vector3(0, 0, 0),
-      new Vector3(0, 0, 1),
-      new Vector3(1, 0, 1)
+      new Vector3(0, 0, -1),
+      new Vector3(-1, 0, -1)
     ),
     // TODO
     bankAngles: [],
@@ -27,8 +27,8 @@ const prefabs: { [key: string]: SegmentPrefab } = {
     curve: new CubicBezierCurve3(
       new Vector3(0, 0, 0),
       new Vector3(0, 0, 0),
-      new Vector3(0, 0, 1),
-      new Vector3(-1, 0, 1)
+      new Vector3(0, 0, -1),
+      new Vector3(1, 0, -1)
     ),
     // TODO
     bankAngles: [],
@@ -36,9 +36,9 @@ const prefabs: { [key: string]: SegmentPrefab } = {
   leftUTurn: {
     curve: new CubicBezierCurve3(
       new Vector3(0, 0, 0),
-      new Vector3(0, 0, 2),
-      new Vector3(2, 0, 2),
-      new Vector3(2, 0, 0)
+      new Vector3(0, 0, -2),
+      new Vector3(-2, 0, -2),
+      new Vector3(-2, 0, 0)
     ),
     // TODO
     bankAngles: [],
@@ -48,7 +48,7 @@ const prefabs: { [key: string]: SegmentPrefab } = {
       new Vector3(0, 0, 0),
       new Vector3(0, 0, 0),
       new Vector3(0, 0, 0),
-      new Vector3(0, 0, 1)
+      new Vector3(0, 0, -1)
     ),
     bankAngles: [],
   },
@@ -57,7 +57,7 @@ const prefabs: { [key: string]: SegmentPrefab } = {
 export function convertPiecesToSplineSegments(
   pieces: string[]
 ): SplineSegment[] {
-  let enterHeading = new Vector3(0, 0, 1);
+  let enterHeading = new Vector3(0, 0, -1);
   let enterPoint = new Vector3(0, 0, 0);
   // let enterPoint;
   return pieces.map((piece) => {
@@ -66,27 +66,30 @@ export function convertPiecesToSplineSegments(
     const normals = [];
 
     // via https://stackoverflow.com/a/33920320
-    let angle = Math.atan2(enterHeading.z, enterHeading.x) - Math.atan2(1, 0);
-    if (angle < 0) {
-      angle += 2 * Math.PI;
-    }
+    let angle = Math.atan2(
+      enterHeading
+        .clone()
+        .cross(new Vector3(0, 0, -1))
+        .dot(new Vector3(0, -1, 0)),
+      new Vector3(0, 0, -1).dot(enterHeading)
+    );
 
     // TODO: why do i gotta negate angle here
     const a = prefab.curve.v0
       .clone()
-      .applyAxisAngle(new Vector3(0, 1, 0), -angle)
+      .applyAxisAngle(new Vector3(0, 1, 0), angle)
       .add(enterPoint);
     const b = prefab.curve.v1
       .clone()
-      .applyAxisAngle(new Vector3(0, 1, 0), -angle)
+      .applyAxisAngle(new Vector3(0, 1, 0), angle)
       .add(enterPoint);
     const c = prefab.curve.v2
       .clone()
-      .applyAxisAngle(new Vector3(0, 1, 0), -angle)
+      .applyAxisAngle(new Vector3(0, 1, 0), angle)
       .add(enterPoint);
     const d = prefab.curve.v3
       .clone()
-      .applyAxisAngle(new Vector3(0, 1, 0), -angle)
+      .applyAxisAngle(new Vector3(0, 1, 0), angle)
       .add(enterPoint);
     const curve = new CubicBezierCurve3(a, b, c, d);
 
@@ -103,12 +106,28 @@ export function convertPiecesToSplineSegments(
 
 export function generateSegments(): SplineSegment[] {
   const pieces = [
+    'straight',
     'rightTurn',
     'leftTurn',
+    'leftTurn',
     'straight',
-    'leftUTurn',
     'rightTurn',
+    'leftTurn',
+    'leftTurn',
     'straight',
+    'straight',
+    'leftTurn',
+    'straight',
+    'rightTurn',
+    'leftUTurn',
+    // 'leftUTurn',
+    // 'straight',
+    // 'rightTurn',
+    // 'leftTurn',
+    // 'straight',
+    // 'leftUTurn',
+    // 'rightTurn',
+    // 'straight',
   ];
 
   return convertPiecesToSplineSegments(pieces);
