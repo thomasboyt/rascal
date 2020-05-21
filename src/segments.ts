@@ -58,6 +58,7 @@ export function convertPiecesToSplineSegments(
   pieces: string[]
 ): SplineSegment[] {
   let enterHeading = new Vector3(0, 0, 1);
+  let enterPoint = new Vector3(0, 0, 0);
   // let enterPoint;
   return pieces.map((piece) => {
     // TODO
@@ -70,22 +71,27 @@ export function convertPiecesToSplineSegments(
       angle += 2 * Math.PI;
     }
 
-    // TODO: why do i gotta rotate angle here
+    // TODO: why do i gotta negate angle here
     const a = prefab.curve.v0
       .clone()
-      .applyAxisAngle(new Vector3(0, 1, 0), -angle);
+      .applyAxisAngle(new Vector3(0, 1, 0), -angle)
+      .add(enterPoint);
     const b = prefab.curve.v1
       .clone()
-      .applyAxisAngle(new Vector3(0, 1, 0), -angle);
+      .applyAxisAngle(new Vector3(0, 1, 0), -angle)
+      .add(enterPoint);
     const c = prefab.curve.v2
       .clone()
-      .applyAxisAngle(new Vector3(0, 1, 0), -angle);
+      .applyAxisAngle(new Vector3(0, 1, 0), -angle)
+      .add(enterPoint);
     const d = prefab.curve.v3
       .clone()
-      .applyAxisAngle(new Vector3(0, 1, 0), -angle);
+      .applyAxisAngle(new Vector3(0, 1, 0), -angle)
+      .add(enterPoint);
     const curve = new CubicBezierCurve3(a, b, c, d);
 
     enterHeading = d.clone().sub(c).normalize();
+    enterPoint = d;
 
     return {
       // rotated curve

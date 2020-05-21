@@ -1,4 +1,13 @@
-import { Vector3, Mesh, Curve, CubicBezierCurve3, CurvePath } from 'three';
+import {
+  Vector3,
+  Mesh,
+  Curve,
+  CubicBezierCurve3,
+  CurvePath,
+  Line,
+  LineBasicMaterial,
+  Geometry,
+} from 'three';
 
 export interface SplineSegment {
   curve: CubicBezierCurve3;
@@ -24,5 +33,12 @@ export class TwistySpline {
   /**
    * Returns a mesh to render in the scene.
    */
-  render(): Mesh {}
+  // render(): Mesh {}
+
+  renderLine(): Line {
+    const geo = new Geometry().setFromPoints(this.curvePath.getPoints());
+    const mat = new LineBasicMaterial({ color: 0x00ffff });
+    const line = new Line(geo, mat);
+    return line;
+  }
 }
