@@ -1,0 +1,58 @@
+terminology disambiguation:
+  - prefab: a segment template for procgen. this has no representation within the curve logic outside of generation stuff
+  - segment: [a, b, c, d] points + any local normal data from t=0 to t=1 _within this segment_
+    - segment a and b are in world space
+    - how do you get a segment from a godot curve?
+
+interface Vector3 {
+  x: number;
+  y: number;
+  z: number;
+}
+
+interface BezierCurve {
+  a: Vector3;
+  b: Vector3;
+  c: Vector3;
+  d: Vector3;
+}
+
+interface ProcGenPrefab {
+  /**
+   * some day this could be other types of curves i guess but that is a far-away road
+   */
+  curve: BezierCurve;
+  bankAngles: {
+    /** between 0 and 1 within this piece */
+    t: number,
+    /** radians representing the bank angle on the xy plane that will get turned into a normal
+        via .... */
+    angle: number
+  }[]
+}
+
+interface SplineSgement {
+  curve: BezierCurve;
+  normals: {
+    t: number;
+    // TODO: global or local?
+    normal: Vector3;
+  }[];
+}
+
+# after generation, make segment t global to spline
+for i in curve.get_point_count() - 1  # remove the last point since it's whatever
+  point = curve.get_point_position(i)
+
+  for normal in normals:
+    normal.t = 
+
+spline.find_normal(t):
+  given a point on the curve t
+  find the nearest segment
+    i think this looks something like 
+
+if you store t for a normal within a local segment
+  and also the normal is specifically stored as a rotational angle(?)
+    so this part is weird because i think really a spline's normal should get stored as like... the actual normal relative to the point on the spline
+    i think the _archetype_ could just store the angle and then it could get calculated correctly later by the bit of code that turns archetypes into normals
