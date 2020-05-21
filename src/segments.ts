@@ -8,6 +8,8 @@ interface SegmentPrefab {
     t: number;
     /** radians representing the bank angle on the xy plane that will get turned into a normal
         via .... */
+    // these are like angles of the normal which is kinda weird, in the future could be relative to
+    // the x axis instead
     angle: number;
   }[];
 }
@@ -20,8 +22,12 @@ const prefabs: { [key: string]: SegmentPrefab } = {
       new Vector3(0, 0, -1),
       new Vector3(-1, 0, -1)
     ),
-    // TODO
-    bankAngles: [],
+    bankAngles: [
+      {
+        t: 0,
+        angle: 0,
+      },
+    ],
   },
   rightTurn: {
     curve: new CubicBezierCurve3(
@@ -30,8 +36,16 @@ const prefabs: { [key: string]: SegmentPrefab } = {
       new Vector3(0, 0, -1),
       new Vector3(1, 0, -1)
     ),
-    // TODO
-    bankAngles: [],
+    bankAngles: [
+      {
+        t: 0,
+        angle: 0,
+      },
+      {
+        t: 0.5,
+        angle: MathUtils.degToRad(45),
+      },
+    ],
   },
   leftUTurn: {
     curve: new CubicBezierCurve3(
@@ -40,8 +54,16 @@ const prefabs: { [key: string]: SegmentPrefab } = {
       new Vector3(-2, 0, -2),
       new Vector3(-2, 0, 0)
     ),
-    // TODO
-    bankAngles: [],
+    bankAngles: [
+      {
+        t: 0,
+        angle: 0,
+      },
+      {
+        t: 0.5,
+        angle: -MathUtils.degToRad(45),
+      },
+    ],
   },
   straight: {
     curve: new CubicBezierCurve3(
@@ -50,7 +72,12 @@ const prefabs: { [key: string]: SegmentPrefab } = {
       new Vector3(0, 0, 0),
       new Vector3(0, 0, -1)
     ),
-    bankAngles: [],
+    bankAngles: [
+      {
+        t: 0,
+        angle: 0,
+      },
+    ],
   },
 };
 
@@ -63,13 +90,14 @@ export function convertPiecesToSplineSegments(
   return pieces.map((piece) => {
     // TODO
     const prefab = prefabs[piece];
-    const normals = [];
 
     // via https://stackoverflow.com/a/33920320
     let angle = Math.atan2(
       enterHeading
         .clone()
         .cross(new Vector3(0, 0, -1))
+        // xxx - a lil weirded out i had to use the negative y axis here, not sure what's
+        // going on w that...
         .dot(new Vector3(0, -1, 0)),
       new Vector3(0, 0, -1).dot(enterHeading)
     );
@@ -96,6 +124,16 @@ export function convertPiecesToSplineSegments(
     enterHeading = d.clone().sub(c).normalize();
     enterPoint = d;
 
+    const normals = prefab.bankAngles.map(({ t, angle }) => {
+      return {
+        t,
+        normal: new Vector3(0, 1, 0).applyAxisAngle(
+          curve.getTangentAt(t),
+          angle
+        ),
+      };
+    });
+
     return {
       // rotated curve
       curve,
@@ -108,18 +146,18 @@ export function generateSegments(): SplineSegment[] {
   const pieces = [
     'straight',
     'rightTurn',
-    'leftTurn',
-    'leftTurn',
-    'straight',
-    'rightTurn',
-    'leftTurn',
-    'leftTurn',
-    'straight',
-    'straight',
-    'leftTurn',
-    'straight',
-    'rightTurn',
     'leftUTurn',
+    'straight',
+    // 'straight',
+    // 'rightTurn',
+    // 'leftTurn',
+    // 'leftTurn',
+    // 'straight',
+    // 'straight',
+    // 'leftTurn',
+    // 'straight',
+    // 'rightTurn',
+    // 'leftUTurn',
     // 'leftUTurn',
     // 'straight',
     // 'rightTurn',

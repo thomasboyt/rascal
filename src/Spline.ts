@@ -22,11 +22,39 @@ export interface SplineSegment {
  */
 export class TwistySpline {
   curvePath: CurvePath<Vector3>;
+  normals: {
+    t: number;
+    normal: Vector3;
+  }[];
 
   constructor(segments: SplineSegment[]) {
     this.curvePath = new CurvePath();
+    this.normals = [];
+
     for (const segment of segments) {
       this.curvePath.add(segment.curve);
+    }
+
+    // we need to store the normals with their t value along the curve
+    const length = this.curvePath.getLength();
+    const curveLengths = this.curvePath.getCurveLengths();
+
+    // let currentLength = 0;
+    for (let i = 0; i < segments.length; i += 1) {
+      const normals = segments[i].normals;
+      const startT = (i === 0 ? 0 : curveLengths[i - 1]) / length;
+      const endT = curveLengths[i] / length;
+      const scale = endT - startT;
+      // console.log(minT, maxT, curveLengths[i]);
+      for (const normal of normals) {
+        const t = startT + scale * normal.t;
+        console.log(t);
+        this.normals.push({
+          t,
+          normal: normal.normal,
+        });
+      }
+      // currentLength = nextLength;
     }
   }
 
@@ -36,9 +64,23 @@ export class TwistySpline {
   // render(): Mesh {}
 
   renderLine(): Line {
-    const geo = new Geometry().setFromPoints(this.curvePath.getPoints());
+    const geo = new Geometry().setFromPoints(this.curvePath.getSpacedPoints());
     const mat = new LineBasicMaterial({ color: 0x00ffff });
     const line = new Line(geo, mat);
     return line;
+  }
+
+  renderNormals(): Line[] {
+    return this.normals.map(({ normal, t }) => {
+      console.log(this.normals.length, t);
+      const pos = this.curvePath.getPointAt(t);
+      const geo = new Geometry().setFromPoints([
+        pos,
+        pos.clone().add(normal.clone().multiplyScalar(0.25)),
+      ]);
+      const mat = new LineBasicMaterial({ color: 0x32cd32 });
+      const line = new Line(geo, mat);
+      return line;
+    });
   }
 }

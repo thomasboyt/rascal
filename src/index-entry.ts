@@ -18,9 +18,9 @@ function init() {
     0.1,
     1000
   );
-  camera.position.z = 1;
+  camera.position.z = 0.2;
   camera.position.y = 1;
-  camera.position.x = 2;
+  camera.position.x = 1.1;
   camera.rotateY(MathUtils.degToRad(30));
   camera.rotateX(MathUtils.degToRad(-30));
   const renderer = new WebGLRenderer();
@@ -31,6 +31,8 @@ function init() {
   const spline = new TwistySpline(segments);
   const line = spline.renderLine();
   scene.add(line);
+  const normals = spline.renderNormals();
+  scene.add(...normals);
 
   return function runLoop() {
     // TODO: logic goes here
