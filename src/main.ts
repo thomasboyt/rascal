@@ -10,7 +10,7 @@ import {
 } from 'three';
 import { FirstPersonControls } from 'three/examples/jsm/controls/FirstPersonControls';
 import { generatePieces, convertPiecesToSplineSegments } from './segments';
-import { TwistySpline } from './Spline';
+import { TwistySpline, SplineSegment } from './Spline';
 import { GUI } from 'dat.gui';
 
 let cameraLock = false;
@@ -23,12 +23,13 @@ document.onkeydown = ({ keyCode }) => {
 class Controller {
   minScale = 0.5;
   maxScale = 1.5;
-  numSegments = 20;
+  numSegments = 12;
 
   scene: Scene;
-  spline = new TwistySpline([]);
+  spline = new TwistySpline();
   renderItems: (Line | LineSegments)[] = [];
   pieces: string[] = [];
+  segments: SplineSegment[] = [];
 
   constructor(scene: Scene) {
     this.scene = scene;
@@ -53,19 +54,43 @@ class Controller {
     this.renderItems = [line, ...normals, wireframe];
   }
 
+  /**
+   * regenerates the pieces used to form the spline
+   */
   regeneratePieces() {
     this.pieces = generatePieces(this);
     this.regenerateSpline();
-  }
-
-  regenerateSpline() {
-    const segments = convertPiecesToSplineSegments(this.pieces, this);
-    this.spline.reset(segments);
     this.renderSpline();
   }
 
+  /**
+   * regenerates the spline's piece scales and heights
+   */
+  regenerateSpline() {
+    this.segments = convertPiecesToSplineSegments(this.pieces, this);
+    this.spline.setSegments(this.segments);
+    this.spline.generateHeights();
+    this.renderSpline();
+  }
+
+  /**
+   * just recalculates the spline with any new settings (e.g. divisions)
+   */
+  recalculateSpline() {
+    this.spline.setSegments(this.segments);
+    this.renderSpline();
+  }
+
+  /**
+   * regenerate only heights along the spline
+   */
   regenerateHeights() {
     this.spline.generateHeights();
+    this.renderSpline();
+  }
+
+  recalculateHeights() {
+    this.spline.recalculateHeights();
     this.renderSpline();
   }
 }
@@ -95,7 +120,6 @@ function init() {
   controls.lookSpeed = 0.1;
 
   const controller = new Controller(scene);
-  const regenerateSpline = () => controller.regenerateSpline();
 
   const g = new GUI();
 
@@ -108,20 +132,17 @@ function init() {
   splineFolder.open();
   splineFolder.add(controller, 'minScale');
   splineFolder.add(controller, 'maxScale');
+  splineFolder.add(controller.spline, 'divisionsPerCurve');
   splineFolder.add(controller, 'regenerateSpline');
+  splineFolder.add(controller, 'recalculateSpline');
 
   const heightFolder = g.addFolder('height generation');
   heightFolder.open();
-  heightFolder
-    .add(controller.spline, 'divisions')
-    .onFinishChange(regenerateSpline);
-  heightFolder
-    .add(controller.spline, 'minDrop')
-    .onFinishChange(regenerateSpline);
-  heightFolder
-    .add(controller.spline, 'maxDrop')
-    .onFinishChange(regenerateSpline);
+  heightFolder.add(controller.spline, 'minDelta');
+  heightFolder.add(controller.spline, 'maxDelta');
+  heightFolder.add(controller.spline, 'tension');
   heightFolder.add(controller, 'regenerateHeights');
+  heightFolder.add(controller, 'recalculateHeights');
 
   return function runLoop() {
     const delta = clock.getDelta();

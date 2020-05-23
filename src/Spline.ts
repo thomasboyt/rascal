@@ -12,6 +12,7 @@ import {
   WireframeGeometry,
   Material,
   CatmullRomCurve3,
+  MathUtils,
 } from 'three';
 
 export interface SplineSegment {
@@ -43,8 +44,11 @@ export interface SplineSegment {
  * creating collision meshes.
  */
 export class TwistySpline {
-  private minDrop = 0.1;
-  private maxDrop = 1;
+  // parameters set from controller
+  minDelta = -2;
+  maxDelta = 2;
+  tension = 0.5;
+  divisionsPerCurve = 24;
 
   private divisions!: number;
   private curvePath!: CurvePath<Vector3>;
@@ -61,13 +65,9 @@ export class TwistySpline {
   }[];
   private heightCurve!: CatmullRomCurve3;
 
-  constructor(segments: SplineSegment[]) {
-    this.reset(segments);
-  }
-
-  reset(segments: SplineSegment[]) {
+  setSegments(segments: SplineSegment[]) {
     this.segments = segments;
-    this.divisions = segments.length * 24;
+    this.divisions = segments.length * this.divisionsPerCurve;
     this.curvePath = new CurvePath();
 
     for (const segment of segments) {
@@ -75,7 +75,6 @@ export class TwistySpline {
     }
 
     this.computeNormals();
-    this.generateHeights();
   }
 
   private computeNormals() {
@@ -110,16 +109,27 @@ export class TwistySpline {
         heightDiff = 0;
       } else {
         heightDiff =
-          -this.minDrop + Math.random() * -(this.maxDrop - this.minDrop);
+          Math.random() * (this.maxDelta - this.minDelta) + this.minDelta;
       }
       const height = last + heightDiff;
       this.heights.push({ t, height });
+      // console.log(t, height);
       last = height;
     }
+
+    this.recalculateHeights();
+  }
+
+  recalculateHeights() {
     const curvePoints = this.heights.map(({ t, height }) => {
       return new Vector3(t, height);
     });
-    this.heightCurve = new CatmullRomCurve3(curvePoints);
+    this.heightCurve = new CatmullRomCurve3(
+      curvePoints,
+      false,
+      'catmullrom',
+      this.tension
+    );
   }
 
   /**
@@ -132,7 +142,7 @@ export class TwistySpline {
    * predefined beziers i didn't want that. but it works for height!
    */
   private getHeightAt(t: number): number {
-    return this.heightCurve.getPointAt(t).y;
+    return this.heightCurve.getPoint(t).y;
   }
 
   private getPositionAt(t: number): Vector3 {
