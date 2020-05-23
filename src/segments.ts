@@ -170,20 +170,12 @@ export function convertPiecesToSplineSegments(
 }
 
 export function generateSegments(): SplineSegment[] {
-  const pieces = [
-    // 'straight',
-    'leftTurn',
-    'rightTurn',
-    'rightTurn',
-    'leftUTurn',
-    'leftTurn',
-    'rightTurn',
-    'straight',
-    'straight',
-    'leftTurn',
-    'leftTurn',
-    'rightTurn',
-  ];
+  const prefabNames = Object.keys(prefabs);
+  const pieces: string[] = [];
+  for (let i = 0; i < 20; i += 1) {
+    const index = Math.floor(Math.random() * prefabNames.length);
+    pieces.push(prefabNames[index]);
+  }
 
   return convertPiecesToSplineSegments(pieces);
 }

@@ -4,10 +4,41 @@ import {
   WebGLRenderer,
   MathUtils,
   Clock,
+  LineSegments,
+  Line,
+  Material,
 } from 'three';
 import { FirstPersonControls } from 'three/examples/jsm/controls/FirstPersonControls';
 import { generateSegments } from './segments';
 import { TwistySpline } from './Spline';
+import { GUI } from 'dat.gui';
+
+let cameraLock = false;
+document.onkeydown = ({ keyCode }) => {
+  if (keyCode === 32) {
+    cameraLock = !cameraLock;
+  }
+};
+
+function createRenderer(scene: Scene) {
+  let items: (Line | LineSegments)[] = [];
+  return (spline: TwistySpline) => {
+    for (const item of items) {
+      scene.remove(item);
+      item.geometry.dispose();
+      (item.material as Material).dispose();
+    }
+    const line = spline.renderLine();
+    scene.add(line);
+    const normals = spline.renderNormals();
+    scene.add(...normals);
+    // const mesh = spline.render();
+    // scene.add(mesh);
+    const wireframe = spline.renderWireframe();
+    scene.add(wireframe);
+    items = [line, ...normals, wireframe];
+  };
+}
 
 function init() {
   const scene = new Scene();
@@ -33,20 +64,38 @@ function init() {
   controls.movementSpeed = 1;
   controls.lookSpeed = 0.1;
 
-  const segments = generateSegments();
-  const spline = new TwistySpline(segments);
-  const line = spline.renderLine();
-  scene.add(line);
-  const normals = spline.renderNormals();
-  scene.add(...normals);
-  // const mesh = spline.render();
-  // scene.add(mesh);
-  const wireframe = spline.renderWireframe();
-  scene.add(wireframe);
+  let segments = generateSegments();
+  let spline = new TwistySpline(segments);
+  const renderSpline = createRenderer(scene);
+  renderSpline(spline);
+
+  const controller = {
+    regenerateSpline() {
+      segments = generateSegments();
+      spline = new TwistySpline(segments);
+      renderSpline(spline);
+    },
+    regenerateHeights() {
+      spline.generateHeights();
+      renderSpline(spline);
+    },
+  };
+
+  const g = new GUI();
+  const splineFolder = g.addFolder('spline');
+  splineFolder.open();
+  splineFolder.add(controller, 'regenerateSpline');
+  const heightFolder = g.addFolder('height');
+  heightFolder.open();
+  heightFolder.add(spline, 'minDrop');
+  heightFolder.add(spline, 'maxDrop');
+  heightFolder.add(controller, 'regenerateHeights');
 
   return function runLoop() {
-    // TODO: logic goes here
-    controls.update(clock.getDelta());
+    const delta = clock.getDelta();
+    if (!cameraLock) {
+      controls.update(delta);
+    }
     renderer.render(scene, camera);
     requestAnimationFrame(runLoop);
   };

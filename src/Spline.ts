@@ -11,6 +11,7 @@ import {
   LineSegments,
   WireframeGeometry,
   Material,
+  CatmullRomCurve3,
 } from 'three';
 
 export interface SplineSegment {
@@ -22,7 +23,7 @@ export interface SplineSegment {
 }
 
 /**
- * A TwistySpline is a bezier spline that has defined normals.
+ * A TwistySpline is a bezier spline with the following properties.
  *
  * Under the hood, it uses the threejs CurvePath and BezierCurve3 to hold the
  * beziers. This is the "least portable" aspect of this implementation, but I'm
@@ -38,31 +39,45 @@ export interface SplineSegment {
  * creating collision meshes.
  */
 export class TwistySpline {
-  curvePath: CurvePath<Vector3>;
+  private divisions: number;
+  private curvePath: CurvePath<Vector3>;
+  private segments: SplineSegment[];
 
-  normals: {
+  private normals!: {
     t: number;
     normal: Vector3;
   }[];
 
-  // TODO: calculate this based on length of spline
-  divisions = 300;
+  private heights!: {
+    t: number;
+    height: number;
+  }[];
+  private heightCurve!: CatmullRomCurve3;
+
+  private minDrop = 0.1;
+  private maxDrop = 1;
 
   constructor(segments: SplineSegment[]) {
+    this.segments = segments;
+    this.divisions = segments.length * 24;
     this.curvePath = new CurvePath();
-    this.normals = [];
 
     for (const segment of segments) {
       this.curvePath.add(segment.curve);
     }
 
-    // we need to store the normals with their t value along the curve
+    this.computeNormals();
+    this.generateHeights();
+  }
+
+  private computeNormals() {
+    this.normals = [];
+
     const length = this.curvePath.getLength();
     const curveLengths = this.curvePath.getCurveLengths();
 
-    // let currentLength = 0;
-    for (let i = 0; i < segments.length; i += 1) {
-      const normals = segments[i].normals;
+    for (let i = 0; i < this.segments.length; i += 1) {
+      const normals = this.segments[i].normals;
       const startT = (i === 0 ? 0 : curveLengths[i - 1]) / length;
       const endT = curveLengths[i] / length;
       const scale = endT - startT;
@@ -73,11 +88,65 @@ export class TwistySpline {
           normal: normal.normal,
         });
       }
-      // currentLength = nextLength;
     }
   }
 
-  getNormalAt(t: number): Vector3 {
+  generateHeights() {
+    this.heights = [];
+
+    let last = 0;
+    for (let i = 0; i <= this.segments.length; i += 1) {
+      const t = i / this.segments.length;
+      const height =
+        t !== 0
+          ? last +
+            (-this.minDrop + Math.random() * -(this.maxDrop - this.minDrop))
+          : 0;
+      // const height = last + -1;
+      this.heights.push({ t, height });
+      last = height;
+    }
+    const curvePoints = this.heights.map(({ t, height }) => {
+      return new Vector3(t, height);
+    });
+    this.heightCurve = new CatmullRomCurve3(curvePoints);
+  }
+
+  /**
+   * height is treated as a catmull-rom spline. mostly just because of how fun
+   * it is to type catmull-rom spline.
+   *
+   * i kept reading about these splines while looking up how to handle the
+   * actual twisty spline, but figured they wouldn't be useful because they're
+   * all about adapting a spline so it goes through a buncha points, and with my
+   * predefined beziers i didn't want that. but it works for height!
+   */
+  private getHeightAt(t: number): number {
+    return this.heightCurve.getPointAt(t).y;
+    // const distance = t * this.curvePath.getLength();
+    // return distance * -0.1;
+
+    // we gotta get a y0, y1, y2, y3
+    const maxIdx =
+      t === 1
+        ? this.heights.length - 1
+        : this.heights.findIndex((height) => height.t > t);
+    const minIdx = maxIdx - 1;
+    const minT = this.heights[minIdx].t;
+    const maxT = this.heights[maxIdx].t;
+    const min = this.heights[minIdx].height;
+    const max = this.heights[maxIdx].height;
+
+    const localT = (t - minT) / (maxT - minT);
+    const u = (1 - Math.cos(localT * Math.PI)) / 2;
+    return min * (1 - u) + max * u;
+  }
+
+  private getPositionAt(t: number): Vector3 {
+    return this.curvePath.getPointAt(t).clone().setY(this.getHeightAt(t));
+  }
+
+  private getNormalAt(t: number): Vector3 {
     // TODO
     // this seems like a very silly way to do this... but works for now
     // maybe there's some better way of scaling along pieces?
@@ -135,15 +204,6 @@ export class TwistySpline {
     return line;
   }
 
-  getHeightAt(t: number): number {
-    // would be nice to have this based on actual distance rather than t
-    return -t * 5;
-  }
-
-  getPositionAt(t: number): Vector3 {
-    return this.curvePath.getPointAt(t).clone().setY(this.getHeightAt(t));
-  }
-
   // we draw two triangles per step, like this:
   // ____
   // | /|
@@ -151,7 +211,7 @@ export class TwistySpline {
   //
   // the "flat ends" are rotated so that they are along the normals of the
   // curve, as defined by the rotation of the curve + user-provided normals
-  createTrackGeo() {
+  private createTrackGeo() {
     const geo = new Geometry();
 
     const width = 0.1;
