@@ -23,9 +23,9 @@ function init() {
     0.01,
     1000
   );
-  camera.position.z = 0.2;
+  camera.position.z = 1;
   camera.position.y = 1;
-  camera.position.x = 1.1;
+  camera.position.x = -1;
   camera.rotateY(MathUtils.degToRad(30));
   camera.rotateX(MathUtils.degToRad(-30));
 

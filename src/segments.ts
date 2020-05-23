@@ -51,11 +51,11 @@ const prefabs: { [key: string]: SegmentPrefab } = {
       },
       {
         t: 0.4,
-        angle: MathUtils.degToRad(25),
+        angle: MathUtils.degToRad(40),
       },
       {
         t: 0.6,
-        angle: MathUtils.degToRad(25),
+        angle: MathUtils.degToRad(40),
       },
     ],
   },
@@ -73,15 +73,15 @@ const prefabs: { [key: string]: SegmentPrefab } = {
       },
       {
         t: 0.5,
-        angle: -MathUtils.degToRad(45),
+        angle: -MathUtils.degToRad(40),
       },
     ],
   },
   straight: {
     curve: new CubicBezierCurve3(
       new Vector3(0, 0, 0),
-      new Vector3(0, 0, 0),
-      new Vector3(0, 0, 0),
+      new Vector3(0, 0, -1 / 3),
+      new Vector3(0, 0, -2 / 3),
       new Vector3(0, 0, -1)
     ),
     bankAngles: [
@@ -91,20 +91,41 @@ const prefabs: { [key: string]: SegmentPrefab } = {
       },
     ],
   },
+  // rightMidTurn: {
+  //   curve: new CubicBezierCurve3(
+  //     new Vector3(0, 0, 0),
+  //     new Vector3(0, 0, -ep),
+  //     new Vector3(0, 0, -1),
+  //     new Vector3(1.5, 0, -2)
+  //   ),
+  //   bankAngles: [
+  //     { t: 0, angle: 0 },
+  //     {
+  //       t: 0.3,
+  //       angle: MathUtils.degToRad(15),
+  //     },
+  //     {
+  //       t: 0.7,
+  //       angle: MathUtils.degToRad(15),
+  //     },
+  //   ],
+  // },
 };
 
 export function convertPiecesToSplineSegments(
   pieces: string[]
 ): SplineSegment[] {
-  let enterHeading = new Vector3(0, 0, -1);
+  let enterHeading = new Vector3(0, -0.25, -1).normalize();
   let enterPoint = new Vector3(0, 0, 0);
-  // let enterPoint;
+
   return pieces.map((piece) => {
-    // TODO
     const prefab = prefabs[piece];
 
+    // get the angle between (0, 0, -1) and the current heading to figure out
+    // how much to rotate the piece by.
+    //
     // via https://stackoverflow.com/a/33920320
-    let angle = Math.atan2(
+    const yaw = Math.atan2(
       enterHeading
         .clone()
         .cross(new Vector3(0, 0, -1))
@@ -114,42 +135,36 @@ export function convertPiecesToSplineSegments(
       new Vector3(0, 0, -1).dot(enterHeading)
     );
 
-    // TODO: why do i gotta negate angle here
-    const a = prefab.curve.v0
-      .clone()
-      .applyAxisAngle(new Vector3(0, 1, 0), angle)
-      .add(enterPoint);
-    const b = prefab.curve.v1
-      .clone()
-      .applyAxisAngle(new Vector3(0, 1, 0), angle)
-      .add(enterPoint);
-    const c = prefab.curve.v2
-      .clone()
-      .applyAxisAngle(new Vector3(0, 1, 0), angle)
-      .add(enterPoint);
-    const d = prefab.curve.v3
-      .clone()
-      .applyAxisAngle(new Vector3(0, 1, 0), angle)
-      .add(enterPoint);
+    const transform = (v: Vector3): Vector3 => {
+      return v
+        .clone()
+        .applyAxisAngle(new Vector3(0, 1, 0), yaw)
+        .add(enterPoint);
+    };
+
+    const a = transform(prefab.curve.v0);
+    const b = transform(prefab.curve.v1);
+    const c = transform(prefab.curve.v2);
+    const d = transform(prefab.curve.v3);
     const curve = new CubicBezierCurve3(a, b, c, d);
+
+    console.log('---');
+    console.log('enter heading', enterHeading);
+    console.log(a, b, c, d);
+    console.log('p1 - p0', new Vector3().subVectors(b, a).normalize());
+    console.log('p3 - p2', new Vector3().subVectors(d, c).normalize());
 
     enterHeading = d.clone().sub(c).normalize();
     enterPoint = d;
 
-    const normals = prefab.bankAngles.map(({ t, angle }) => {
+    const angles = prefab.bankAngles.concat({ t: 1, angle: 0 });
+    const normals = angles.map(({ t, angle }) => {
+      const tan = curve.getTangentAt(t);
+      const normal = new Vector3(0, 1, 0).clone().applyAxisAngle(tan, angle);
       return {
         t,
-        normal: new Vector3(0, 1, 0).applyAxisAngle(
-          curve.getTangentAt(t),
-          angle
-        ),
+        normal,
       };
-    });
-
-    // add an ending normal for the last point
-    normals.push({
-      t: 1,
-      normal: new Vector3(0, 1, 0).applyAxisAngle(curve.getTangentAt(1), 0),
     });
 
     return {
@@ -162,13 +177,19 @@ export function convertPiecesToSplineSegments(
 
 export function generateSegments(): SplineSegment[] {
   const pieces = [
+    'straight',
+    'leftUTurn',
+    'rightTurn',
+    'rightTurn',
+    'rightTurn',
+    'leftUTurn',
+    'leftTurn',
     'rightTurn',
     'straight',
-    // 'leftUTurn',
-    // 'leftTurn',
-    // 'straight',
-    // 'rightTurn',
-    // 'leftUTurn',
+    'straight',
+    'leftTurn',
+    'leftTurn',
+    'rightTurn',
   ];
 
   return convertPiecesToSplineSegments(pieces);

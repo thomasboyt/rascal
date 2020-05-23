@@ -46,7 +46,7 @@ export class TwistySpline {
   }[];
 
   // TODO: calculate this based on length of spline
-  divisions = 100;
+  divisions = 200;
 
   constructor(segments: SplineSegment[]) {
     this.curvePath = new CurvePath();
@@ -82,19 +82,35 @@ export class TwistySpline {
     // this seems like a very silly way to do this... but works for now
     // maybe there's some better way of scaling along pieces?
     const maxIdx =
-      t === 0 ? 1 : this.normals.findIndex((normal) => normal.t >= t);
+      t === 1
+        ? this.normals.length - 1
+        : this.normals.findIndex((normal) => normal.t > t);
     const minIdx = maxIdx - 1;
     const minT = this.normals[minIdx].t;
     const maxT = this.normals[maxIdx].t;
     const minN = this.normals[minIdx].normal;
     const maxN = this.normals[maxIdx].normal;
     const localT = (t - minT) / (maxT - minT);
-    return minN.clone().lerp(maxN, localT);
+    const xzNormal = minN.clone().lerp(maxN, localT);
+    // TODO: apply pitch?
+    return xzNormal;
   }
 
   renderNormals(): Line[] {
-    const step = 3 / this.divisions;
     const lines = [];
+    for (let i = 0; i < this.normals.length; i += 1) {
+      const { normal, t } = this.normals[i];
+      const pos = this.curvePath.getPointAt(t);
+      const geo = new Geometry().setFromPoints([
+        pos,
+        pos.clone().add(normal.clone().multiplyScalar(0.25)),
+      ]);
+      const mat = new LineBasicMaterial({ color: 0xffff00 });
+      const line = new Line(geo, mat);
+      lines.push(line);
+    }
+
+    const step = 1 / this.divisions;
     for (let t = 0; t <= 1; t += step) {
       const normal = this.getNormalAt(t);
       const pos = this.curvePath.getPointAt(t);
@@ -166,15 +182,6 @@ export class TwistySpline {
     return geo;
   }
 
-  /**
-   * Returns a mesh to render in the scene.
-   */
-  render(): Mesh {
-    const geo = this.createTrackGeo();
-    const mat = new MeshBasicMaterial({ color: 0xffff00 });
-    return new Mesh(geo, mat);
-  }
-
   renderWireframe() {
     const geo = this.createTrackGeo();
     const wireframe = new WireframeGeometry(geo);
@@ -186,5 +193,14 @@ export class TwistySpline {
     mat.transparent = true;
 
     return line;
+  }
+
+  /**
+   * Returns a mesh to render in the scene.
+   */
+  render(): Mesh {
+    const geo = this.createTrackGeo();
+    const mat = new MeshBasicMaterial({ color: 0xffff00 });
+    return new Mesh(geo, mat);
   }
 }
