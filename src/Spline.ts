@@ -21,6 +21,7 @@ export interface SplineSegment {
     t: number;
     normal: Vector3;
   }[];
+  enterHeight: number;
 }
 
 /**
@@ -75,6 +76,7 @@ export class TwistySpline {
     }
 
     this.computeNormals();
+    this.computeHeights();
   }
 
   private computeNormals() {
@@ -98,32 +100,14 @@ export class TwistySpline {
     }
   }
 
-  generateHeights() {
-    this.heights = [];
-
-    let last = 0;
-    for (let i = 0; i <= this.segments.length; i += 1) {
-      const t = i / this.segments.length;
-      let heightDiff: number;
-      if (t === 0 || t === 1) {
-        heightDiff = 0;
-      } else {
-        heightDiff =
-          Math.random() * (this.maxDelta - this.minDelta) + this.minDelta;
-      }
-      const height = last + heightDiff;
-      this.heights.push({ t, height });
-      // console.log(t, height);
-      last = height;
-    }
-
-    this.recalculateHeights();
-  }
-
-  recalculateHeights() {
-    const curvePoints = this.heights.map(({ t, height }) => {
-      return new Vector3(t, height);
+  private computeHeights() {
+    const curvePoints = this.segments.map(({ enterHeight }, idx) => {
+      return new Vector3(idx / this.segments.length, enterHeight);
     });
+    curvePoints.push(
+      new Vector3(1, this.segments[this.segments.length - 1].enterHeight)
+    );
+
     this.heightCurve = new CatmullRomCurve3(
       curvePoints,
       false,

@@ -105,19 +105,25 @@ prefabs['rightUTurn'] = mirror(prefabs['leftUTurn']);
 prefabs['rightMidTurn'] = mirror(prefabs['leftMidTurn']);
 
 interface GenerationParams {
+  numSegments: number;
+  // piece size
   minScale: number;
   maxScale: number;
-  numSegments: number;
+  // piece height
+  minDelta: number;
+  maxDelta: number;
 }
 
 export function convertPiecesToSplineSegments(
   pieces: string[],
   params: GenerationParams
 ): SplineSegment[] {
+  const { maxDelta, minDelta, minScale, maxScale } = params;
+
   let enterHeading = new Vector3(0, 0, -1).normalize();
   let enterPoint = new Vector3(0, 0, 0);
 
-  return pieces.map((piece) => {
+  const segments = pieces.map((piece, idx) => {
     const prefab = prefabs[piece];
 
     // get the angle between (0, 0, -1) and the current heading to figure out
@@ -134,8 +140,7 @@ export function convertPiecesToSplineSegments(
       new Vector3(0, 0, -1).dot(enterHeading)
     );
 
-    const scale =
-      params.minScale + Math.random() * (params.maxScale - params.minScale);
+    const scale = Math.random() * (maxScale - minScale) + minScale;
 
     const transform = (v: Vector3): Vector3 => {
       return v
@@ -165,11 +170,14 @@ export function convertPiecesToSplineSegments(
     });
 
     return {
-      // rotated curve
       curve,
       normals,
+      // filled in later
+      enterHeight: 0,
     };
   });
+
+  return generateHeightsForSplineSegments(segments, params);
 }
 
 export function generatePieces(params: GenerationParams): string[] {
@@ -180,4 +188,22 @@ export function generatePieces(params: GenerationParams): string[] {
     pieces.push(prefabNames[index]);
   }
   return pieces;
+}
+
+export function generateHeightsForSplineSegments(
+  segments: SplineSegment[],
+  params: GenerationParams
+): SplineSegment[] {
+  const { maxDelta, minDelta } = params;
+
+  let lastHeight = 0;
+  return segments.map((segment, idx) => {
+    let enterHeight =
+      lastHeight + Math.random() * (maxDelta - minDelta) + minDelta;
+    if (idx === 0) {
+      enterHeight = 0;
+    }
+    lastHeight = enterHeight;
+    return { ...segment, enterHeight };
+  });
 }

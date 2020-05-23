@@ -9,9 +9,14 @@ import {
   Material,
 } from 'three';
 import { FirstPersonControls } from 'three/examples/jsm/controls/FirstPersonControls';
-import { generatePieces, convertPiecesToSplineSegments } from './segments';
-import { TwistySpline, SplineSegment } from './Spline';
 import { GUI } from 'dat.gui';
+
+import {
+  generatePieces,
+  convertPiecesToSplineSegments,
+  generateHeightsForSplineSegments,
+} from './segments';
+import { TwistySpline, SplineSegment } from './Spline';
 
 let cameraLock = false;
 document.onkeydown = ({ keyCode }) => {
@@ -23,6 +28,8 @@ document.onkeydown = ({ keyCode }) => {
 class Controller {
   minScale = 0.5;
   maxScale = 1.5;
+  minDelta = 0;
+  maxDelta = -1;
   numSegments = 12;
 
   scene: Scene;
@@ -69,7 +76,6 @@ class Controller {
   regenerateSpline() {
     this.segments = convertPiecesToSplineSegments(this.pieces, this);
     this.spline.setSegments(this.segments);
-    this.spline.generateHeights();
     this.renderSpline();
   }
 
@@ -85,12 +91,8 @@ class Controller {
    * regenerate only heights along the spline
    */
   regenerateHeights() {
-    this.spline.generateHeights();
-    this.renderSpline();
-  }
-
-  recalculateHeights() {
-    this.spline.recalculateHeights();
+    this.segments = generateHeightsForSplineSegments(this.segments, this);
+    this.spline.setSegments(this.segments);
     this.renderSpline();
   }
 }
@@ -132,17 +134,19 @@ function init() {
   splineFolder.open();
   splineFolder.add(controller, 'minScale');
   splineFolder.add(controller, 'maxScale');
-  splineFolder.add(controller.spline, 'divisionsPerCurve');
   splineFolder.add(controller, 'regenerateSpline');
-  splineFolder.add(controller, 'recalculateSpline');
 
   const heightFolder = g.addFolder('height generation');
   heightFolder.open();
-  heightFolder.add(controller.spline, 'minDelta');
-  heightFolder.add(controller.spline, 'maxDelta');
-  heightFolder.add(controller.spline, 'tension');
+  heightFolder.add(controller, 'minDelta');
+  heightFolder.add(controller, 'maxDelta');
   heightFolder.add(controller, 'regenerateHeights');
-  heightFolder.add(controller, 'recalculateHeights');
+
+  const calcFolder = g.addFolder('spline calculation');
+  calcFolder.open();
+  calcFolder.add(controller.spline, 'divisionsPerCurve');
+  calcFolder.add(controller.spline, 'tension');
+  calcFolder.add(controller, 'recalculateSpline');
 
   return function runLoop() {
     const delta = clock.getDelta();
