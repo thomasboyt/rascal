@@ -115,7 +115,7 @@ const prefabs: { [key: string]: SegmentPrefab } = {
 export function convertPiecesToSplineSegments(
   pieces: string[]
 ): SplineSegment[] {
-  let enterHeading = new Vector3(0, -0.25, -1).normalize();
+  let enterHeading = new Vector3(0, 0, -1).normalize();
   let enterPoint = new Vector3(0, 0, 0);
 
   return pieces.map((piece) => {
@@ -148,12 +148,6 @@ export function convertPiecesToSplineSegments(
     const d = transform(prefab.curve.v3);
     const curve = new CubicBezierCurve3(a, b, c, d);
 
-    console.log('---');
-    console.log('enter heading', enterHeading);
-    console.log(a, b, c, d);
-    console.log('p1 - p0', new Vector3().subVectors(b, a).normalize());
-    console.log('p3 - p2', new Vector3().subVectors(d, c).normalize());
-
     enterHeading = d.clone().sub(c).normalize();
     enterPoint = d;
 
@@ -177,9 +171,8 @@ export function convertPiecesToSplineSegments(
 
 export function generateSegments(): SplineSegment[] {
   const pieces = [
-    'straight',
-    'leftUTurn',
-    'rightTurn',
+    // 'straight',
+    'leftTurn',
     'rightTurn',
     'rightTurn',
     'leftUTurn',

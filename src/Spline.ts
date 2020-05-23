@@ -46,7 +46,7 @@ export class TwistySpline {
   }[];
 
   // TODO: calculate this based on length of spline
-  divisions = 200;
+  divisions = 300;
 
   constructor(segments: SplineSegment[]) {
     this.curvePath = new CurvePath();
@@ -91,16 +91,14 @@ export class TwistySpline {
     const minN = this.normals[minIdx].normal;
     const maxN = this.normals[maxIdx].normal;
     const localT = (t - minT) / (maxT - minT);
-    const xzNormal = minN.clone().lerp(maxN, localT);
-    // TODO: apply pitch?
-    return xzNormal;
+    return minN.clone().lerp(maxN, localT);
   }
 
   renderNormals(): Line[] {
     const lines = [];
     for (let i = 0; i < this.normals.length; i += 1) {
       const { normal, t } = this.normals[i];
-      const pos = this.curvePath.getPointAt(t);
+      const pos = this.getPositionAt(t);
       const geo = new Geometry().setFromPoints([
         pos,
         pos.clone().add(normal.clone().multiplyScalar(0.25)),
@@ -113,7 +111,7 @@ export class TwistySpline {
     const step = 1 / this.divisions;
     for (let t = 0; t <= 1; t += step) {
       const normal = this.getNormalAt(t);
-      const pos = this.curvePath.getPointAt(t);
+      const pos = this.getPositionAt(t);
       const geo = new Geometry().setFromPoints([
         pos,
         pos.clone().add(normal.clone().multiplyScalar(0.25)),
@@ -126,13 +124,24 @@ export class TwistySpline {
   }
 
   renderLine(): Line {
-    // TODO: n here should probably be calculated by something
-    const geo = new Geometry().setFromPoints(
-      this.curvePath.getSpacedPoints(this.divisions)
-    );
+    const step = 1 / this.divisions;
+    const points: Vector3[] = [];
+    for (let t = 0; t <= 1; t += step) {
+      points.push(this.getPositionAt(t));
+    }
+    const geo = new Geometry().setFromPoints(points);
     const mat = new LineBasicMaterial({ color: 0x00ffff });
     const line = new Line(geo, mat);
     return line;
+  }
+
+  getHeightAt(t: number): number {
+    // would be nice to have this based on actual distance rather than t
+    return -t * 5;
+  }
+
+  getPositionAt(t: number): Vector3 {
+    return this.curvePath.getPointAt(t).clone().setY(this.getHeightAt(t));
   }
 
   // we draw two triangles per step, like this:
@@ -151,8 +160,8 @@ export class TwistySpline {
     let idx = 0;
     for (let t = 0; t < 1; t += step) {
       const nextT = t + step > 1 ? 1 : t + step;
-      const cur = this.curvePath.getPointAt(t);
-      const next = this.curvePath.getPointAt(nextT);
+      const cur = this.getPositionAt(t);
+      const next = this.getPositionAt(nextT);
       const tangent = this.curvePath.getTangentAt(t);
       const nextTangent = this.curvePath.getTangentAt(nextT);
       const curNormal = this.getNormalAt(t);
