@@ -23,15 +23,19 @@ export interface SplineSegment {
 }
 
 /**
- * A TwistySpline is a bezier spline with the following properties.
+ * A TwistySpline is a bezier spline that's created from several inputs:
  *
- * Under the hood, it uses the threejs CurvePath and BezierCurve3 to hold the
- * beziers. This is the "least portable" aspect of this implementation, but I'm
- * pretty sure it's relatively easy to implement the portion I'm using.
+ * - A series of "2D" bezier curves forming the "top-down" view of the bezier
+ *   spline. These are actually defined as 3D curves on the xz plane (with y
+ *   value always 0). They should always be continuous with each other, with
+ *   equal entrance/exit tangents.
  *
- * The curves should be defined starting from going "forward," which in
- * Three/WebGL/most GL-based things means the negative z axis. For example, a 90
- * degree right turn would start at [0, 0, 0] and end at [1, 0, -1].
+ * - A series of normals representing "roll" along this spline. These are
+ *   linearly interpolated between to generate banked turns.
+ *
+ * - A randomly-generated height spline, defining the amount of height change
+ *   between each segment. This uses Catmull-Rom interpolation to make smooth
+ *   descents with what I'm pretty sure is continuity at each point.
  *
  * The spline also has a "width" that's just defined as the width along the x
  * axis for these pieces before rotation. This width is only used for
@@ -97,12 +101,14 @@ export class TwistySpline {
     let last = 0;
     for (let i = 0; i <= this.segments.length; i += 1) {
       const t = i / this.segments.length;
-      const height =
-        t !== 0
-          ? last +
-            (-this.minDrop + Math.random() * -(this.maxDrop - this.minDrop))
-          : 0;
-      // const height = last + -1;
+      let heightDiff: number;
+      if (t === 0 || t === 1) {
+        heightDiff = 0;
+      } else {
+        heightDiff =
+          -this.minDrop + Math.random() * -(this.maxDrop - this.minDrop);
+      }
+      const height = last + heightDiff;
       this.heights.push({ t, height });
       last = height;
     }
@@ -123,23 +129,6 @@ export class TwistySpline {
    */
   private getHeightAt(t: number): number {
     return this.heightCurve.getPointAt(t).y;
-    // const distance = t * this.curvePath.getLength();
-    // return distance * -0.1;
-
-    // we gotta get a y0, y1, y2, y3
-    const maxIdx =
-      t === 1
-        ? this.heights.length - 1
-        : this.heights.findIndex((height) => height.t > t);
-    const minIdx = maxIdx - 1;
-    const minT = this.heights[minIdx].t;
-    const maxT = this.heights[maxIdx].t;
-    const min = this.heights[minIdx].height;
-    const max = this.heights[maxIdx].height;
-
-    const localT = (t - minT) / (maxT - minT);
-    const u = (1 - Math.cos(localT * Math.PI)) / 2;
-    return min * (1 - u) + max * u;
   }
 
   private getPositionAt(t: number): Vector3 {
@@ -258,7 +247,7 @@ export class TwistySpline {
     const line = new LineSegments(wireframe);
     const mat = line.material as Material;
     mat.depthTest = false;
-    mat.opacity = 1;
+    mat.opacity = 0.8;
     mat.transparent = true;
 
     return line;
