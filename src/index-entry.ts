@@ -65,14 +65,14 @@ function init() {
   controls.lookSpeed = 0.1;
 
   let segments = generateSegments();
-  let spline = new TwistySpline(segments);
+  const spline = new TwistySpline(segments);
   const renderSpline = createRenderer(scene);
   renderSpline(spline);
 
   const controller = {
     regenerateSpline() {
       segments = generateSegments();
-      spline = new TwistySpline(segments);
+      spline.reset(segments);
       renderSpline(spline);
     },
     regenerateHeights() {

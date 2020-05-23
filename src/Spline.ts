@@ -43,9 +43,12 @@ export interface SplineSegment {
  * creating collision meshes.
  */
 export class TwistySpline {
-  private divisions: number;
-  private curvePath: CurvePath<Vector3>;
-  private segments: SplineSegment[];
+  private minDrop = 0.1;
+  private maxDrop = 1;
+
+  private divisions!: number;
+  private curvePath!: CurvePath<Vector3>;
+  private segments!: SplineSegment[];
 
   private normals!: {
     t: number;
@@ -58,10 +61,11 @@ export class TwistySpline {
   }[];
   private heightCurve!: CatmullRomCurve3;
 
-  private minDrop = 0.1;
-  private maxDrop = 1;
-
   constructor(segments: SplineSegment[]) {
+    this.reset(segments);
+  }
+
+  reset(segments: SplineSegment[]) {
     this.segments = segments;
     this.divisions = segments.length * 24;
     this.curvePath = new CurvePath();
