@@ -12,8 +12,9 @@ import {
   WireframeGeometry,
   Material,
   CatmullRomCurve3,
-  MathUtils,
+  SphereGeometry,
 } from 'three';
+import { MonotonicCubicSpline } from './utils/monotonicCubicSpline';
 
 export interface SplineSegment {
   curve: CubicBezierCurve3;
@@ -21,6 +22,7 @@ export interface SplineSegment {
     t: number;
     normal: Vector3;
   }[];
+  /** The height at the start of this segment. */
   enterHeight: number;
 }
 
@@ -36,8 +38,8 @@ export interface SplineSegment {
  *   linearly interpolated between to generate banked turns.
  *
  * - A randomly-generated height spline, defining the amount of height change
- *   between each segment. This uses Catmull-Rom interpolation to make smooth
- *   descents with what I'm pretty sure is continuity at each point.
+ *   between each segment. This uses monotonic cubic interpolation and seems to
+ *   work okay?
  *
  * The spline also has a "width" that's just defined as the width along the x
  * axis for these pieces before rotation. This width is only used for
@@ -48,7 +50,6 @@ export class TwistySpline {
   // parameters set from controller
   minDelta = -2;
   maxDelta = 2;
-  tension = 0.5;
   divisionsPerCurve = 24;
 
   private divisions!: number;
@@ -59,12 +60,7 @@ export class TwistySpline {
     t: number;
     normal: Vector3;
   }[];
-
-  private heights!: {
-    t: number;
-    height: number;
-  }[];
-  private heightCurve!: CatmullRomCurve3;
+  private heightSpline!: MonotonicCubicSpline;
 
   setSegments(segments: SplineSegment[]) {
     this.segments = segments;
@@ -101,19 +97,21 @@ export class TwistySpline {
   }
 
   private computeHeights() {
+    const length = this.curvePath.getLength();
+    const lengths = this.curvePath.getCurveLengths();
+
     const curvePoints = this.segments.map(({ enterHeight }, idx) => {
-      return new Vector3(idx / this.segments.length, enterHeight);
+      const t = idx === 0 ? 0 : lengths[idx - 1] / length;
+      console.log(t, enterHeight);
+      return new Vector3(t, enterHeight);
     });
     curvePoints.push(
       new Vector3(1, this.segments[this.segments.length - 1].enterHeight)
     );
 
-    this.heightCurve = new CatmullRomCurve3(
-      curvePoints,
-      false,
-      'catmullrom',
-      this.tension
-    );
+    const x = curvePoints.map(({ x }) => x);
+    const y = curvePoints.map(({ y }) => y);
+    this.heightSpline = new MonotonicCubicSpline(x, y);
   }
 
   /**
@@ -126,7 +124,7 @@ export class TwistySpline {
    * predefined beziers i didn't want that. but it works for height!
    */
   private getHeightAt(t: number): number {
-    return this.heightCurve.getPoint(t).y;
+    return this.heightSpline.interpolate(t);
   }
 
   private getPositionAt(t: number): Vector3 {
@@ -148,6 +146,24 @@ export class TwistySpline {
     const maxN = this.normals[maxIdx].normal;
     const localT = (t - minT) / (maxT - minT);
     return minN.clone().lerp(maxN, localT);
+  }
+
+  renderPoints(): Mesh[] {
+    const length = this.curvePath.getLength();
+    const lengths = this.curvePath.getCurveLengths();
+
+    const points = [];
+    for (let i = 0; i <= this.curvePath.curves.length; i += 1) {
+      const t = i === 0 ? 0 : lengths[i - 1] / length;
+      points.push(this.getPositionAt(t));
+    }
+
+    return points.map((point) => {
+      const geo = new SphereGeometry(0.03);
+      const mat = new MeshBasicMaterial({ color: 0xffc0cb });
+      geo.translate(point.x, point.y, point.z);
+      return new Mesh(geo, mat);
+    });
   }
 
   renderNormals(): Line[] {

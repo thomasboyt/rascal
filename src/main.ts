@@ -7,6 +7,7 @@ import {
   LineSegments,
   Line,
   Material,
+  Mesh,
 } from 'three';
 import { FirstPersonControls } from 'three/examples/jsm/controls/FirstPersonControls';
 import { GUI } from 'dat.gui';
@@ -26,15 +27,15 @@ document.onkeydown = ({ keyCode }) => {
 };
 
 class Controller {
-  minScale = 0.5;
-  maxScale = 1.5;
-  minDelta = 0;
-  maxDelta = -1;
-  numSegments = 12;
+  minScale = 1;
+  maxScale = 2;
+  minDelta = -1;
+  maxDelta = 1;
+  numSegments = 6;
 
   scene: Scene;
   spline = new TwistySpline();
-  renderItems: (Line | LineSegments)[] = [];
+  renderItems: (Line | LineSegments | Mesh)[] = [];
   pieces: string[] = [];
   segments: SplineSegment[] = [];
 
@@ -58,7 +59,9 @@ class Controller {
     // scene.add(mesh);
     const wireframe = spline.renderWireframe();
     scene.add(wireframe);
-    this.renderItems = [line, ...normals, wireframe];
+    const points = spline.renderPoints();
+    scene.add(...points);
+    this.renderItems = [line, ...normals, wireframe, ...points];
   }
 
   /**
@@ -145,7 +148,6 @@ function init() {
   const calcFolder = g.addFolder('spline calculation');
   calcFolder.open();
   calcFolder.add(controller.spline, 'divisionsPerCurve');
-  calcFolder.add(controller.spline, 'tension');
   calcFolder.add(controller, 'recalculateSpline');
 
   return function runLoop() {

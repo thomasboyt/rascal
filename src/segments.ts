@@ -64,9 +64,9 @@ const prefabs: { [key: string]: SegmentPrefab } = {
   leftUTurn: {
     curve: [
       new Vector3(0, 0, 0),
-      new Vector3(0, 0, -2),
-      new Vector3(-2, 0, -2),
-      new Vector3(-2, 0, 0),
+      new Vector3(0, 0, -1.5),
+      new Vector3(-1.5, 0, -1.5),
+      new Vector3(-1.5, 0, 0),
     ],
     bankAngles: [
       {
@@ -74,7 +74,11 @@ const prefabs: { [key: string]: SegmentPrefab } = {
         angle: 0,
       },
       {
-        t: 0.5,
+        t: 0.3,
+        angle: -MathUtils.degToRad(40),
+      },
+      {
+        t: 0.7,
         angle: -MathUtils.degToRad(40),
       },
     ],
@@ -83,8 +87,8 @@ const prefabs: { [key: string]: SegmentPrefab } = {
     curve: [
       new Vector3(0, 0, 0),
       new Vector3(0, 0, 0),
-      new Vector3(0, 0, -1),
-      new Vector3(-1.5, 0, -2),
+      new Vector3(0, 0, -0.5),
+      new Vector3(-0.5, 0, -1),
     ],
     bankAngles: [
       { t: 0, angle: 0 },
@@ -118,12 +122,12 @@ export function convertPiecesToSplineSegments(
   pieces: string[],
   params: GenerationParams
 ): SplineSegment[] {
-  const { maxDelta, minDelta, minScale, maxScale } = params;
+  const { minScale, maxScale } = params;
 
   let enterHeading = new Vector3(0, 0, -1).normalize();
   let enterPoint = new Vector3(0, 0, 0);
 
-  const segments = pieces.map((piece, idx) => {
+  const segments = pieces.map((piece) => {
     const prefab = prefabs[piece];
 
     // get the angle between (0, 0, -1) and the current heading to figure out
@@ -181,6 +185,7 @@ export function convertPiecesToSplineSegments(
 }
 
 export function generatePieces(params: GenerationParams): string[] {
+  // const prefabNames = ['leftUTurn', 'straight'];
   const prefabNames = Object.keys(prefabs);
   const pieces: string[] = [];
   for (let i = 0; i < params.numSegments; i += 1) {
